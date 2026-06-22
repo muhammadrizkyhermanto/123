@@ -87,11 +87,28 @@ st.dataframe(filtered_data, use_container_width=True)
 # =========================
 st.subheader("📊 Statistik")
 
+import pandas as pd
+
+filtered_data.columns = filtered_data.columns.str.strip()
+
+# ubah "Total skor" jadi numeric (penting!)
+if "Total skor" in filtered_data.columns:
+    filtered_data["Total skor"] = pd.to_numeric(filtered_data["Total skor"], errors="coerce")
+
 col1, col2, col3 = st.columns(3)
 
 col1.metric("Jumlah Data", len(filtered_data))
-col2.metric("Rata-rata Nilai", round(filtered_data["Nilai"].mean(), 2))
-col3.metric("Nilai Tertinggi", filtered_data["Nilai"].max())
+
+# RATA-RATA YANG BENAR SESUAI DATA KAMU
+if "Total skor" in filtered_data.columns:
+    col2.metric(
+        "Rata-rata Skor",
+        round(filtered_data["Total skor"].mean(), 2)
+    )
+else:
+    col2.metric("Rata-rata Skor", "Kolom tidak ditemukan")
+
+col3.metric("Jumlah Kolom", len(filtered_data.columns))
 
 # =========================
 # BAR CHART
