@@ -10,7 +10,7 @@ st.set_page_config(
     layout="wide"
 )
 
-st.title("📊 Professional Data Dashboard (KPI + Analytics)")
+st.title("📊 Survei Kepuasan Mahasiswa terhadap kampus umaha")
 
 # =========================
 # UPLOAD FILE
