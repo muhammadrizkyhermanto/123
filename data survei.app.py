@@ -11,110 +11,87 @@ st.set_page_config(
 )
 
 # =========================
-# JUDUL DASHBOARD
+# JUDUL
 # =========================
 st.title("📊 Dashboard Survei Mahasiswa UMAHA")
-st.markdown("Dashboard ini digunakan untuk menampilkan hasil survei mahasiswa secara interaktif.")
+st.markdown("Dashboard untuk menampilkan data survei mahasiswa secara interaktif.")
 
 # =========================
 # SIDEBAR
 # =========================
-st.sidebar.header("📁 Pengaturan Data")
+st.sidebar.header("📁 Upload Data")
 
 uploaded_file = st.sidebar.file_uploader(
-    "Upload file CSV kamu",
+    "Upload file CSV",
     type=["csv"]
 )
 
 # =========================
-# DATA DEFAULT (JIKA TIDAK UPLOAD)
+# DATA DEFAULT
 # =========================
-def load_default_data():
-    data = pd.DataFrame({
+def get_default_data():
+    return pd.DataFrame({
         "Nama": ["A", "B", "C", "D", "E"],
         "Nilai": [80, 90, 85, 70, 95],
         "Kelas": ["TI-1", "TI-1", "TI-2", "TI-2", "TI-1"]
     })
-    return data
 
 # =========================
-# LOAD DATA
+# LOAD DATA (AMAN)
 # =========================
-try:
-    if uploaded_file is not None:
+if uploaded_file is not None:
+    try:
         data = pd.read_csv(uploaded_file)
-        st.success("File berhasil diupload!")
-    else:
-        data = load_default_data()
-        st.info("Menggunakan data default karena belum ada file upload.")
-
-except Exception as e:
-    st.error(f"Gagal membaca data: {e}")
-    data = load_default_data()
+        st.success("File berhasil diupload")
+    except Exception as e:
+        st.error(f"File tidak bisa dibaca: {e}")
+        data = get_default_data()
+else:
+    data = get_default_data()
+    st.info("Menggunakan data default")
 
 # =========================
-# TAMPILKAN DATA MENTAH
+# TAMPILKAN DATA
 # =========================
-st.subheader("📋 Data Mentah")
+st.subheader("📋 Data Mahasiswa")
 st.dataframe(data, use_container_width=True)
 
 # =========================
-# FILTER DI SIDEBAR
+# FILTER KELAS
 # =========================
 if "Kelas" in data.columns:
-    kelas_pilih = st.sidebar.selectbox(
+    kelas = st.sidebar.selectbox(
         "Filter Kelas",
-        options=["Semua"] + list(data["Kelas"].unique())
+        ["Semua"] + list(data["Kelas"].unique())
     )
 
-    if kelas_pilih != "Semua":
-        data = data[data["Kelas"] == kelas_pilih]
+    if kelas != "Semua":
+        data = data[data["Kelas"] == kelas]
 
 # =========================
-# STATISTIK DASAR
+# STATISTIK
 # =========================
-st.subheader("📊 Statistik Ringkasan")
+st.subheader("📊 Statistik Data")
 
-try:
-    col1, col2, col3 = st.columns(3)
+col1, col2, col3 = st.columns(3)
 
-    col1.metric("Jumlah Data", len(data))
-    col2.metric("Rata-rata Nilai", round(data["Nilai"].mean(), 2))
-    col3.metric("Nilai Tertinggi", data["Nilai"].max())
-
-except Exception as e:
-    st.warning(f"Statistik tidak dapat ditampilkan: {e}")
+col1.metric("Jumlah Data", len(data))
+col2.metric("Rata-rata Nilai", round(data["Nilai"].mean(), 2))
+col3.metric("Nilai Tertinggi", data["Nilai"].max())
 
 # =========================
-# GRAFIK BAR CHART
+# GRAFIK
 # =========================
-st.subheader("📊 Grafik Nilai Mahasiswa (Bar Chart)")
+st.subheader("📊 Grafik Nilai Mahasiswa")
 
-try:
-    chart_data = data.copy()
-    chart_data = chart_data.set_index("Nama")
+chart_data = data.set_index("Nama")
 
-    st.bar_chart(chart_data["Nilai"])
-
-except Exception as e:
-    st.warning(f"Gagal membuat bar chart: {e}")
-
-# =========================
-# GRAFIK LINE CHART
-# =========================
-st.subheader("📈 Grafik Tren Nilai (Line Chart)")
-
-try:
-    st.line_chart(chart_data["Nilai"])
-
-except Exception as e:
-    st.warning(f"Gagal membuat line chart: {e}")
+st.bar_chart(chart_data["Nilai"])
+st.line_chart(chart_data["Nilai"])
 
 # =========================
 # FOOTER
 # =========================
 st.markdown("---")
-st.markdown("© 2026 Dashboard Survei Mahasiswa UMAHA")
-    st.warning(f"Tidak dapat membuat grafik: {e}")
-except Exception as e:
+st.markdown("© 2026 Dashboard UMAHA")
     st.warning(f"Tidak dapat membuat grafik: {e}")
