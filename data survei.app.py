@@ -116,7 +116,7 @@ if "Kelas" in filtered_data.columns:
     pie_data = filtered_data["Kelas"].value_counts().reset_index()
     pie_data.columns = ["Kelas", "Jumlah"]
 
-    st.bar_chart(pie_data.set_index("Kelas"))  # streamlit tidak punya pie native stabil
+    st.bar_chart(pie_data.set_index("Kelas")) # streamlit tidak punya pie native stabil
 else:
     st.info("Kolom Kelas tidak tersedia")
 
