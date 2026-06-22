@@ -5,146 +5,150 @@ import pandas as pd
 # CONFIG
 # =========================
 st.set_page_config(
-    page_title="Dashboard Survei UMAHA",
+    page_title="Professional Dashboard KPI",
     page_icon="📊",
     layout="wide"
 )
 
-st.title("📊 Dashboard Survei Mahasiswa UMAHA")
+st.title("📊 Professional Data Dashboard (KPI + Analytics)")
 
 # =========================
-# UPLOAD FILE (CSV / EXCEL)
+# UPLOAD FILE
 # =========================
-st.sidebar.header("📁 Upload Data")
+uploaded_file = st.file_uploader("Upload CSV file", type=["csv"])
 
-uploaded_file = st.sidebar.file_uploader(
-    "Upload CSV / Excel",
-    type=["csv", "xlsx"]
-)
-
-# =========================
-# DATA DEFAULT
-# =========================
-def load_default():
-    return pd.DataFrame({
-        "Nama": ["A", "B", "C", "D", "E"],
-        "Nilai": [80, 90, 85, 70, 95],
-        "Kelas": ["TI-1", "TI-1", "TI-2", "TI-2", "TI-1"],
-        "Jenis_Kelamin": ["L", "P", "L", "P", "L"]
-    })
-
-# =========================
-# LOAD DATA
-# =========================
 if uploaded_file is not None:
     try:
-        if uploaded_file.name.endswith(".csv"):
-            data = pd.read_csv(uploaded_file)
+        df = pd.read_csv(uploaded_file)
+        df.columns = df.columns.str.strip()
+
+        st.success("Dataset berhasil dimuat!")
+
+        # =========================
+        # SIDEBAR FILTER
+        # =========================
+        st.sidebar.header("⚙️ Filter Data")
+
+        # filter categorical columns
+        cat_cols = df.select_dtypes(include="object").columns.tolist()
+
+        filtered_df = df.copy()
+
+        for col in cat_cols:
+            unique_vals = df[col].dropna().unique().tolist()
+            if len(unique_vals) > 1 and len(unique_vals) < 50:
+                selected_vals = st.sidebar.multiselect(
+                    f"Filter {col}",
+                    unique_vals,
+                    default=unique_vals
+                )
+                filtered_df = filtered_df[filtered_df[col].isin(selected_vals)]
+
+        # =========================
+        # PREVIEW
+        # =========================
+        st.subheader("📄 Data Preview")
+        st.dataframe(filtered_df, use_container_width=True)
+
+        # =========================
+        # NUMERIC & KPI
+        # =========================
+        numeric_cols = filtered_df.select_dtypes(include="number").columns.tolist()
+
+        st.subheader("📊 KPI Dashboard")
+
+        col1, col2, col3, col4 = st.columns(4)
+
+        with col1:
+            st.metric("Total Data", len(filtered_df))
+
+        if len(numeric_cols) > 0:
+            kpi_col = st.selectbox("Pilih kolom KPI", numeric_cols)
+
+            with col2:
+                st.metric("Rata-rata", round(filtered_df[kpi_col].mean(), 2))
+
+            with col3:
+                st.metric("Maksimum", filtered_df[kpi_col].max())
+
+            with col4:
+                st.metric("Minimum", filtered_df[kpi_col].min())
+
         else:
-            data = pd.read_excel(uploaded_file)
+            with col2:
+                st.metric("Rata-rata", "N/A")
+            with col3:
+                st.metric("Max", "N/A")
+            with col4:
+                st.metric("Min", "N/A")
 
-        st.success("File berhasil diupload")
+        # =========================
+        # CHART SECTION
+        # =========================
+        st.subheader("📈 Visual Analytics")
+
+        chart_col = st.selectbox("Pilih kolom untuk visualisasi", filtered_df.columns)
+
+        chart_type = st.radio(
+            "Jenis Chart",
+            ["Bar", "Line", "Area", "Pie"]
+        )
+
+        colA, colB = st.columns(2)
+
+        with colA:
+            # numeric chart
+            if pd.api.types.is_numeric_dtype(filtered_df[chart_col]):
+                if chart_type == "Bar":
+                    st.bar_chart(filtered_df[chart_col])
+                elif chart_type == "Line":
+                    st.line_chart(filtered_df[chart_col])
+                elif chart_type == "Area":
+                    st.area_chart(filtered_df[chart_col])
+                else:
+                    st.warning("Pie chart cocok untuk data kategori")
+            else:
+                data_counts = filtered_df[chart_col].value_counts()
+
+                if chart_type == "Pie":
+                    st.write(data_counts)
+                    st.info("Pie chart simulated via bar (Streamlit limitation)")
+                    st.bar_chart(data_counts)
+                else:
+                    st.bar_chart(data_counts)
+
+        with colB:
+            st.write("📌 Insight Otomatis")
+
+            if len(numeric_cols) > 0:
+                top_col = numeric_cols[0]
+
+                avg = filtered_df[top_col].mean()
+                mx = filtered_df[top_col].max()
+                mn = filtered_df[top_col].min()
+
+                st.info(f"""
+                - Rata-rata **{top_col}**: {round(avg,2)}
+                - Nilai tertinggi: {mx}
+                - Nilai terendah: {mn}
+                - Total data setelah filter: {len(filtered_df)}
+                """)
+            else:
+                st.warning("Tidak ada data numerik untuk insight")
+
+        # =========================
+        # DETAIL STATISTICS
+        # =========================
+        st.subheader("📌 Statistik Lengkap")
+
+        if len(numeric_cols) > 0:
+            st.dataframe(filtered_df[numeric_cols].describe(), use_container_width=True)
+        else:
+            st.info("Tidak ada kolom numerik")
+
     except Exception as e:
-        st.error(f"Gagal membaca file: {e}")
-        data = load_default()
+        st.error("Terjadi error pada sistem")
+        st.exception(e)
+
 else:
-    data = load_default()
-    st.info("Menggunakan data default")
-
-# =========================
-# SIDEBAR FILTER MULTI KOLOM
-# =========================
-st.sidebar.header("🔎 Filter Data")
-
-filtered_data = data.copy()
-
-# Filter Kelas
-if "Kelas" in data.columns:
-    kelas = st.sidebar.selectbox(
-        "Filter Kelas",
-        ["Semua"] + list(data["Kelas"].unique())
-    )
-    if kelas != "Semua":
-        filtered_data = filtered_data[filtered_data["Kelas"] == kelas]
-
-# Filter Jenis Kelamin
-if "Jenis_Kelamin" in data.columns:
-    jk = st.sidebar.selectbox(
-        "Filter Jenis Kelamin",
-        ["Semua"] + list(data["Jenis_Kelamin"].unique())
-    )
-    if jk != "Semua":
-        filtered_data = filtered_data[filtered_data["Jenis_Kelamin"] == jk]
-
-# =========================
-# TAMPILKAN DATA
-# =========================
-st.subheader("📋 Data Hasil Filter")
-st.dataframe(filtered_data, use_container_width=True)
-
-# =========================
-# STATISTIK
-# =========================
-st.subheader("📊 Statistik")
-# bersihkan nama kolom (ini penting banget)
-chart_data.columns = chart_data.columns.str.strip()
-
-# cari kolom nilai secara fleksibel
-kolom_nilai = None
-
-for col in chart_data.columns:
-    if col.lower() == "nilai":
-        kolom_nilai = col
-        break
-
-if kolom_nilai:
-    st.bar_chart(chart_data[kolom_nilai])
-else:
-    st.error(f"Kolom 'Nilai' tidak ditemukan. Kolom yang tersedia: {list(chart_data.columns)}")
-
-# =========================
-# BAR CHART
-# =========================
-st.subheader("📊 Bar Chart Nilai")
-
-chart_data = filtered_data.set_index("Nama")
-st.bar_chart(chart_data["Nilai"])
-
-# =========================
-# LINE CHART
-# =========================
-st.subheader("📈 Line Chart Nilai")
-st.line_chart(chart_data["Nilai"])
-
-# =========================
-# PIE CHART (KOMPOSISI KELAS)
-# =========================
-st.subheader("🥧 Pie Chart Distribusi Kelas")
-
-if "Kelas" in filtered_data.columns:
-    pie_data = filtered_data["Kelas"].value_counts().reset_index()
-    pie_data.columns = ["Kelas", "Jumlah"]
-
-    st.bar_chart(pie_data.set_index("Kelas")) # streamlit tidak punya pie native stabil
-else:
-    st.info("Kolom Kelas tidak tersedia")
-
-# =========================
-# EXPORT LAPORAN
-# =========================
-st.subheader("⬇ Export Data")
-
-csv = filtered_data.to_csv(index=False).encode("utf-8")
-
-st.download_button(
-    label="Download CSV Hasil Filter",
-    data=csv,
-    file_name="laporan_survei.csv",
-    mime="text/csv"
-)
-
-# =========================
-# FOOTER
-# =========================
-st.markdown("---")
-st.markdown("© 2026 Dashboard UMAHA")
+    st.info("Silakan upload file CSV untuk mulai analisis")
