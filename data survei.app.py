@@ -5,15 +5,15 @@ import pandas as pd
 # CONFIG
 # =========================
 st.set_page_config(
-    page_title="Dashboard Auto Detect UMAHA",
+    page_title="Dashboard Survei UMAHA",
     page_icon="📊",
     layout="wide"
 )
 
-st.title("📊 Dashboard Survei (Auto Detect Kolom)")
+st.title("📊 Dashboard Survei Mahasiswa UMAHA")
 
 # =========================
-# UPLOAD FILE
+# UPLOAD FILE (CSV / EXCEL)
 # =========================
 st.sidebar.header("📁 Upload Data")
 
@@ -23,133 +23,114 @@ uploaded_file = st.sidebar.file_uploader(
 )
 
 # =========================
+# DATA DEFAULT
+# =========================
+def load_default():
+    return pd.DataFrame({
+        "Nama": ["A", "B", "C", "D", "E"],
+        "Nilai": [80, 90, 85, 70, 95],
+        "Kelas": ["TI-1", "TI-1", "TI-2", "TI-2", "TI-1"],
+        "Jenis_Kelamin": ["L", "P", "L", "P", "L"]
+    })
+
+# =========================
 # LOAD DATA
 # =========================
-def load_data(file):
+if uploaded_file is not None:
     try:
-        if file.name.endswith(".csv"):
-            df = pd.read_csv(file)
+        if uploaded_file.name.endswith(".csv"):
+            data = pd.read_csv(uploaded_file)
         else:
-            df = pd.read_excel(file)
-        return df
-    except:
-        return None
+            data = pd.read_excel(uploaded_file)
 
-if uploaded_file:
-    data = load_data(uploaded_file)
-    if data is None:
-        st.error("File tidak bisa dibaca")
-        st.stop()
+        st.success("File berhasil diupload")
+    except Exception as e:
+        st.error(f"Gagal membaca file: {e}")
+        data = load_default()
 else:
-    # default fallback
-    data = pd.DataFrame({
-        "Nama": ["A", "B", "C"],
-        "Nilai": [80, 90, 85],
-        "Kelas": ["TI-1", "TI-1", "TI-2"]
-    })
+    data = load_default()
     st.info("Menggunakan data default")
 
 # =========================
-# CLEANING KOLOM
+# SIDEBAR FILTER MULTI KOLOM
 # =========================
-data.columns = data.columns.str.strip()
+st.sidebar.header("🔎 Filter Data")
 
-st.write("📌 Kolom terdeteksi:", list(data.columns))
+filtered_data = data.copy()
 
-# =========================
-# AUTO-DETECT KOLOM
-# =========================
-def detect_column(possible_names, df_columns):
-    """
-    Cari kolom berdasarkan kemungkinan nama
-    """
-    for name in possible_names:
-        for col in df_columns:
-            if name.lower() in col.lower():
-                return col
-    return None
+# Filter Kelas
+if "Kelas" in data.columns:
+    kelas = st.sidebar.selectbox(
+        "Filter Kelas",
+        ["Semua"] + list(data["Kelas"].unique())
+    )
+    if kelas != "Semua":
+        filtered_data = filtered_data[filtered_data["Kelas"] == kelas]
 
-# detect kolom penting
-col_nilai = detect_column(["nilai", "score", "skor", "value"], data.columns)
-col_nama = detect_column(["nama", "name", "student", "mahasiswa"], data.columns)
-col_kelas = detect_column(["kelas", "class", "group"], data.columns)
-
-# =========================
-# FILTER SIDEBAR
-# =========================
-st.sidebar.header("🔎 Filter")
-
-filtered = data.copy()
-
-if col_kelas:
-    kelas_list = ["Semua"] + list(filtered[col_kelas].dropna().unique())
-    kelas_pilih = st.sidebar.selectbox("Filter Kelas", kelas_list)
-
-    if kelas_pilih != "Semua":
-        filtered = filtered[filtered[col_kelas] == kelas_pilih]
+# Filter Jenis Kelamin
+if "Jenis_Kelamin" in data.columns:
+    jk = st.sidebar.selectbox(
+        "Filter Jenis Kelamin",
+        ["Semua"] + list(data["Jenis_Kelamin"].unique())
+    )
+    if jk != "Semua":
+        filtered_data = filtered_data[filtered_data["Jenis_Kelamin"] == jk]
 
 # =========================
-# TAMPIL DATA
+# TAMPILKAN DATA
 # =========================
-st.subheader("📋 Data Hasil")
-
-st.dataframe(filtered, use_container_width=True)
+st.subheader("📋 Data Hasil Filter")
+st.dataframe(filtered_data, use_container_width=True)
 
 # =========================
-# STATISTIK AMAN
+# STATISTIK
 # =========================
 st.subheader("📊 Statistik")
 
 col1, col2, col3 = st.columns(3)
 
-col1.metric("Jumlah Data", len(filtered))
+col1.metric("Jumlah Data", len(filtered_data))
+col2.metric("Rata-rata Nilai", round(filtered_data["Nilai"].mean(), 2))
+col3.metric("Nilai Tertinggi", filtered_data["Nilai"].max())
 
-# aman tanpa error
-if col_nilai:
-    col2.metric("Rata-rata", round(filtered[col_nilai].mean(), 2))
-    col3.metric("Maksimum", filtered[col_nilai].max())
+# =========================
+# BAR CHART
+# =========================
+st.subheader("📊 Bar Chart Nilai")
+
+chart_data = filtered_data.set_index("Nama")
+st.bar_chart(chart_data["Nilai"])
+
+# =========================
+# LINE CHART
+# =========================
+st.subheader("📈 Line Chart Nilai")
+st.line_chart(chart_data["Nilai"])
+
+# =========================
+# PIE CHART (KOMPOSISI KELAS)
+# =========================
+st.subheader("🥧 Pie Chart Distribusi Kelas")
+
+if "Kelas" in filtered_data.columns:
+    pie_data = filtered_data["Kelas"].value_counts().reset_index()
+    pie_data.columns = ["Kelas", "Jumlah"]
+
+    st.bar_chart(pie_data.set_index("Kelas"))  # streamlit tidak punya pie native stabil
 else:
-    col2.metric("Rata-rata", "Tidak ada kolom nilai")
-    col3.metric("Maksimum", "Tidak ada kolom nilai")
+    st.info("Kolom Kelas tidak tersedia")
 
 # =========================
-# GRAFIK
+# EXPORT LAPORAN
 # =========================
-st.subheader("📊 Visualisasi")
+st.subheader("⬇ Export Data")
 
-if col_nilai and col_nama:
-    chart_data = filtered[[col_nama, col_nilai]].dropna()
-    chart_data = chart_data.set_index(col_nama)
-
-    st.bar_chart(chart_data[col_nilai])
-    st.line_chart(chart_data[col_nilai])
-else:
-    st.warning("Kolom nama/nilai tidak terdeteksi untuk grafik")
-
-# =========================
-# PIE CHART (AUTO)
-# =========================
-st.subheader("🥧 Distribusi Data")
-
-if col_kelas:
-    pie = filtered[col_kelas].value_counts().reset_index()
-    pie.columns = ["Kategori", "Jumlah"]
-
-    st.bar_chart(pie.set_index("Kategori"))
-else:
-    st.info("Tidak ada kolom kategori untuk pie chart")
-
-# =========================
-# EXPORT DATA
-# =========================
-st.subheader("⬇ Export Laporan")
-
-csv = filtered.to_csv(index=False).encode("utf-8")
+csv = filtered_data.to_csv(index=False).encode("utf-8")
 
 st.download_button(
-    label="Download CSV",
+    label="Download CSV Hasil Filter",
     data=csv,
-    file_name="laporan_dashboard.csv",
+    file_name="laporan_survei.csv",
     mime="text/csv"
 )
 
@@ -157,4 +138,4 @@ st.download_button(
 # FOOTER
 # =========================
 st.markdown("---")
-st.markdown("© Dashboard Auto Detect UMAHA")
+st.markdown("© 2026 Dashboard UMAHA")
