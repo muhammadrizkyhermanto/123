@@ -1,202 +1,119 @@
 import streamlit as st
 import pandas as pd
-import plotly.express as px
+import matplotlib.pyplot as plt
 
-# =========================
+# =====================================
 # KONFIGURASI HALAMAN
-# =========================
+# =====================================
 st.set_page_config(
-    page_title="Dashboard Kepuasan Mahasiswa",
+    page_title="Dashboard Survei Mahasiswa",
     page_icon="📊",
     layout="wide"
 )
 
-st.title("📊 Dashboard Kepuasan Mahasiswa")
-st.markdown("Analisis Survei Kepuasan Mahasiswa Teknik Industri")
+st.title("📊 Dashboard Survei Kepuasan Mahasiswa")
 
-# =========================
-# LOAD DATA
-# =========================
-@st.cache_data
-def load_data():
-    df = pd.read_csv("tugas pak gusti.csv")
-    return df
+# =====================================
+# UPLOAD FILE CSV
+# =====================================
+uploaded_file = st.file_uploader(
+    "Upload File CSV",
+    type=["csv"]
+)
 
-df = load_data()
+if uploaded_file is not None:
 
-# Hapus kolom kosong
-df = df.loc[:, ~df.columns.str.contains("^Unnamed")]
+    try:
+        df = pd.read_csv(uploaded_file)
 
-# =========================
-# SIDEBAR
-# =========================
-st.sidebar.header("Filter Data")
+        st.success("Data berhasil dimuat!")
 
-if "Angkatan " in df.columns:
-    angkatan = st.sidebar.multiselect(
-        "Pilih Angkatan",
-        options=sorted(df["Angkatan "].dropna().unique()),
-        default=sorted(df["Angkatan "].dropna().unique())
-    )
+        # Hapus kolom kosong jika ada
+        df = df.loc[:, ~df.columns.str.contains("^Unnamed")]
 
-    df = df[df["Angkatan "].isin(angkatan)]
+        # =====================================
+        # DATA MENTAH
+        # =====================================
+        st.subheader("Data Responden")
+        st.dataframe(df)
 
-# =========================
-# METRIK
-# =========================
-st.subheader("Ringkasan Data")
+        # =====================================
+        # INFORMASI UMUM
+        # =====================================
+        st.subheader("Ringkasan Data")
 
-col1, col2, col3 = st.columns(3)
+        col1, col2, col3 = st.columns(3)
 
-with col1:
-    st.metric("Jumlah Responden", len(df))
+        with col1:
+            st.metric("Jumlah Responden", len(df))
 
-with col2:
-    if "Angkatan " in df.columns:
-        st.metric(
-            "Jumlah Angkatan",
-            df["Angkatan "].nunique()
+        with col2:
+            st.metric("Jumlah Kolom", len(df.columns))
+
+        with col3:
+            st.metric("Jumlah Data Kosong", df.isnull().sum().sum())
+
+        # =====================================
+        # PILIH KOLOM UNTUK ANALISIS
+        # =====================================
+        st.subheader("Analisis Data")
+
+        kolom = st.selectbox(
+            "Pilih Kolom",
+            df.columns
         )
 
-with col3:
-    if "Jenis kelamin" in df.columns:
-        st.metric(
-            "Jumlah Gender",
-            df["Jenis kelamin"].nunique()
+        # =====================================
+        # VALUE COUNTS
+        # =====================================
+        data_chart = (
+            df[kolom]
+            .astype(str)
+            .value_counts()
         )
 
-# =========================
-# DATA RESPONDEN
-# =========================
-st.subheader("Data Responden")
+        st.write("Distribusi Data")
 
-tampil = df[[
-    "Cap waktu",
-    "Angkatan ",
-    "Jenis kelamin",
-    "kondisi ruang kelas di kampus ",
-    "kualitas akses internet (WIFI)",
-    "kualitas  pengajaran dosen ",
-    "Pelayanan administrasi (TU)",
-    "Tingkat kepuasan secara keseluruhan terhadap fasilitas kampus"
-]]
+        fig, ax = plt.subplots(figsize=(8, 4))
 
-st.dataframe(tampil, use_container_width=True)
+        data_chart.plot(
+            kind="bar",
+            ax=ax
+        )
 
-# =========================
-# DISTRIBUSI ANGKATAN
-# =========================
-st.subheader("Distribusi Angkatan")
+        plt.xticks(rotation=45)
+        plt.tight_layout()
 
-angkatan_chart = (
-    df["Angkatan "]
-    .value_counts()
-    .reset_index()
-)
+        st.pyplot(fig)
 
-angkatan_chart.columns = ["Angkatan", "Jumlah"]
+        # =====================================
+        # TABEL DISTRIBUSI
+        # =====================================
+        st.subheader("Tabel Distribusi")
 
-fig = px.bar(
-    angkatan_chart,
-    x="Angkatan",
-    y="Jumlah",
-    text="Jumlah",
-    title="Jumlah Responden per Angkatan"
-)
-
-st.plotly_chart(fig, use_container_width=True)
-
-# =========================
-# DISTRIBUSI GENDER
-# =========================
-st.subheader("Distribusi Jenis Kelamin")
-
-gender_chart = (
-    df["Jenis kelamin"]
-    .value_counts()
-    .reset_index()
-)
-
-gender_chart.columns = ["Jenis Kelamin", "Jumlah"]
-
-fig2 = px.pie(
-    gender_chart,
-    names="Jenis Kelamin",
-    values="Jumlah",
-    title="Komposisi Jenis Kelamin"
-)
-
-st.plotly_chart(fig2, use_container_width=True)
-
-# =========================
-# ANALISIS KEPUASAN
-# =========================
-st.subheader("Analisis Tingkat Kepuasan")
-
-kolom_survei = [
-    "kondisi ruang kelas di kampus ",
-    "kualitas akses internet (WIFI)",
-    "kualitas  pengajaran dosen ",
-    "kemudahan menghubungi dosen diluar jam kuliah ",
-    "kesesuaian materi dengan dunia kerja ",
-    "Pelayanan administrasi (TU)",
-    "Kemudahan akses informasi akademik ",
-    "Tingkat kepuasan secara keseluruhan terhadap fasilitas kampus"
-]
-
-hasil = []
-
-for kolom in kolom_survei:
-
-    modus = df[kolom].mode()
-
-    if len(modus) > 0:
-        hasil.append({
-            "Aspek": kolom,
-            "Penilaian Terbanyak": modus[0]
+        distribusi = pd.DataFrame({
+            "Kategori": data_chart.index,
+            "Jumlah": data_chart.values
         })
 
-hasil_df = pd.DataFrame(hasil)
+        st.dataframe(distribusi)
 
-st.dataframe(
-    hasil_df,
-    use_container_width=True
-)
+        # =====================================
+        # SARAN DAN MASUKAN
+        # =====================================
+        for col in df.columns:
 
-# =========================
-# GRAFIK SETIAP ASPEK
-# =========================
-st.subheader("Grafik Kepuasan per Aspek")
+            if "saran" in col.lower() or "masukan" in col.lower():
 
-pilihan = st.selectbox(
-    "Pilih Aspek",
-    kolom_survei
-)
+                st.subheader("Saran dan Masukan")
 
-grafik = (
-    df[pilihan]
-    .value_counts()
-    .reset_index()
-)
+                saran = df[col].dropna()
 
-grafik.columns = ["Kategori", "Jumlah"]
+                for i, isi in enumerate(saran, start=1):
+                    st.write(f"{i}. {isi}")
 
-fig3 = px.bar(
-    grafik,
-    x="Kategori",
-    y="Jumlah",
-    text="Jumlah",
-    title=pilihan
-)
+    except Exception as e:
+        st.error(f"Terjadi kesalahan: {e}")
 
-st.plotly_chart(fig3, use_container_width=True)
-
-# =========================
-# SARAN MAHASISWA
-# =========================
-st.subheader("Saran dan Masukan Mahasiswa")
-
-saran = df["saran atau masukan untuk kampus"].dropna()
-
-for i, isi in enumerate(saran, start=1):
-    st.write(f"**{i}.** {isi}")
+else:
+    st.info("Silakan upload file CSV terlebih dahulu.")
