@@ -12,7 +12,7 @@ st.set_page_config(
     layout="wide"
 )
 
-st.title("📊 Dashboard Survei Mahasiswa (Auto Detect + KPI Profesional)")
+st.title("📊 Dashboard Survei Mahasiswa (Auto Detect + Anti Error)")
 
 # =========================
 # LOAD DATA
@@ -20,13 +20,13 @@ st.title("📊 Dashboard Survei Mahasiswa (Auto Detect + KPI Profesional)")
 @st.cache_data
 def load_data(file):
     df = pd.read_csv(file)
-    
-    # hapus kolom kosong/unnamed
-    df = df.loc[:, ~df.columns.str.contains("^Unnamed")]
-    
-    # rapikan nama kolom
+
+    # bersihkan nama kolom
     df.columns = df.columns.str.strip()
-    
+
+    # hapus unnamed column
+    df = df.loc[:, ~df.columns.str.contains("^Unnamed")]
+
     return df
 
 
@@ -34,81 +34,91 @@ uploaded_file = st.file_uploader("Upload file CSV kamu", type=["csv"])
 
 if uploaded_file:
     df = load_data(uploaded_file)
-
     st.success("Data berhasil dimuat!")
 
     # =========================
-    # DETEKSI KOLOM OTOMATIS
+    # DETEKSI KOLOM AMAN
     # =========================
-    skor_cols = [col for col in df.columns if "[Skor]" in col]
-    
-    # pastikan numeric
-    for col in skor_cols + ["Total skor"]:
-        if col in df.columns:
+    def find_col(keywords):
+        for col in df.columns:
+            if any(k.lower() in col.lower() for k in keywords):
+                return col
+        return None
+
+    col_total = find_col(["total skor", "total", "skor total"])
+    col_gender = find_col(["jenis kelamin", "gender", "kelamin"])
+    col_angkatan = find_col(["angkatan"])
+
+    skor_cols = [col for col in df.columns if "skor" in col.lower() and col != col_total]
+
+    # ubah numeric aman
+    for col in skor_cols + ([col_total] if col_total else []):
+        if col:
             df[col] = pd.to_numeric(df[col], errors="coerce")
 
     # =========================
-    # KPI SECTION
+    # KPI
     # =========================
     st.subheader("📌 KPI Utama")
 
     col1, col2, col3 = st.columns(3)
 
     with col1:
-        avg_total = df["Total skor"].mean() if "Total skor" in df.columns else 0
+        avg_total = df[col_total].mean() if col_total else 0
         st.metric("Rata-rata Total Skor", f"{avg_total:.2f}")
 
     with col2:
-        jumlah = len(df)
-        st.metric("Jumlah Responden", jumlah)
+        st.metric("Jumlah Responden", len(df))
 
     with col3:
         avg_all = df[skor_cols].mean().mean() if skor_cols else 0
         st.metric("Rata-rata Semua Skor", f"{avg_all:.2f}")
 
     # =========================
-    # DISTRIBUSI ANGKATAN
+    # ANGKATAN
     # =========================
     st.subheader("📊 Distribusi Angkatan")
 
-    if "Angkatan " in df.columns:
-        fig = px.histogram(df, x="Angkatan ", color="Angkatan ",
-                           title="Distribusi Responden Berdasarkan Angkatan")
+    if col_angkatan:
+        fig = px.histogram(df, x=col_angkatan, color=col_angkatan)
         st.plotly_chart(fig, use_container_width=True)
+    else:
+        st.warning("Kolom Angkatan tidak ditemukan")
 
     # =========================
-    # JENIS KELAMIN
+    # GENDER
     # =========================
     st.subheader("👥 Gender Responden")
 
-    if "Jenis kelamin" in df.columns:
-        gender = df["Jenis kelamin"].value_counts().reset_index()
-        gender.columns = ["Jenis Kelamin", "Jumlah"]
+    if col_gender:
+        gender = df[col_gender].value_counts().reset_index()
+        gender.columns = ["Kategori", "Jumlah"]
 
-        fig = px.pie(gender, names="Jenis Kelamin", values="Jumlah",
-                     title="Distribusi Jenis Kelamin")
+        fig = px.pie(gender, names="Kategori", values="Jumlah")
         st.plotly_chart(fig, use_container_width=True)
+    else:
+        st.warning("Kolom Gender tidak ditemukan")
 
     # =========================
-    # RATA-RATA PER INDIKATOR
+    # RATA-RATA INDIKATOR
     # =========================
-    st.subheader("📈 Rata-rata Skor Tiap Indikator")
+    st.subheader("📈 Rata-rata Skor per Indikator")
 
     if skor_cols:
         avg_scores = df[skor_cols].mean().sort_values()
         avg_df = avg_scores.reset_index()
-        avg_df.columns = ["Indikator", "Rata-rata Skor"]
+        avg_df.columns = ["Indikator", "Rata-rata"]
 
-        fig = px.bar(avg_df, x="Rata-rata Skor", y="Indikator",
-                     orientation="h",
-                     title="Rata-rata Penilaian per Aspek")
+        fig = px.bar(avg_df, x="Rata-rata", y="Indikator", orientation="h")
         st.plotly_chart(fig, use_container_width=True)
+    else:
+        st.warning("Tidak ada kolom skor ditemukan")
 
     # =========================
-    # RAW DATA
+    # DATA
     # =========================
     st.subheader("📄 Data Mentah")
     st.dataframe(df)
 
 else:
-    st.info("Silakan upload file CSV untuk menampilkan dashboard.")
+    st.info("Silakan upload file CSV terlebih dahulu")
