@@ -17,7 +17,10 @@ data = pd.DataFrame({
 
 st.dataframe(data)
 
-st.bar_chart(data.set_index("Nama"))
+# aman pakai try-except
+try:
+    st.bar_chart(data.set_index("Nama"))
 except Exception as e:
     st.warning(f"Tidak dapat membuat grafik: {e}")
-    )
+except Exception as e:
+    st.warning(f"Tidak dapat membuat grafik: {e}")
