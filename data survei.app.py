@@ -1,132 +1,161 @@
 import streamlit as st
 import pandas as pd
 
-# ==========================
-# KONFIGURASI HALAMAN
-# ==========================
+# =========================
+# PAGE CONFIG
+# =========================
 st.set_page_config(
-    page_title="Dashboard Survei Mahasiswa",
+    page_title="Dashboard Survei Mahasiswa umaha",
     page_icon="📊",
     layout="wide"
 )
 
-# ==========================
-# HEADER
-# ==========================
+# =========================
+# CSS
+# =========================
 st.markdown("""
-<div style='text-align:center;padding:20px'>
-    <h1>📊 Dashboard Survei Mahasiswa</h1>
-    <p>Analisis Data Kepuasan Mahasiswa</p>
-</div>
+<style>
+.main{
+    padding-top:20px;
+}
+.kpi{
+    background-color:#f0f2f6;
+    padding:20px;
+    border-radius:15px;
+    text-align:center;
+}
+h1{
+    text-align:center;
+}
+</style>
 """, unsafe_allow_html=True)
 
-# ==========================
+# =========================
+# HEADER
+# =========================
+st.title("📊 Dashboard Survei Mahasiswa")
+st.caption("Analisis Data Kepuasan Mahasiswa")
+
+# =========================
 # UPLOAD FILE
-# ==========================
+# =========================
 file = st.file_uploader(
     "Upload File CSV",
     type=["csv"]
 )
 
-if file is not None:
+if file:
 
     try:
-
         df = pd.read_csv(file)
 
-        st.success("✅ Data berhasil dimuat")
+        # Hapus kolom kosong
+        df = df.loc[:, ~df.columns.str.contains("^Unnamed")]
 
-        # ==========================
-        # METRIK
-        # ==========================
+        st.success("Data berhasil dimuat")
+
+        # =========================
+        # KPI
+        # =========================
         col1, col2, col3 = st.columns(3)
 
-        col1.metric(
-            "Jumlah Responden",
-            len(df)
-        )
+        with col1:
+            st.metric(
+                "Jumlah Responden",
+                len(df)
+            )
 
-        col2.metric(
-            "Jumlah Kolom",
-            len(df.columns)
-        )
+        with col2:
+            st.metric(
+                "Jumlah Kolom",
+                len(df.columns)
+            )
 
-        col3.metric(
-            "Data Kosong",
-            int(df.isna().sum().sum())
-        )
-
-        st.divider()
-
-        # ==========================
-        # DATA MENTAH
-        # ==========================
-        st.subheader("📋 Data Responden")
-
-        st.dataframe(
-            df,
-            use_container_width=True
-        )
+        with col3:
+            st.metric(
+                "Data Kosong",
+                int(df.isna().sum().sum())
+            )
 
         st.divider()
 
-        # ==========================
-        # ANALISIS
-        # ==========================
-        st.subheader("📈 Analisis Data")
+        # =========================
+        # FILTER
+        # =========================
+        st.subheader("🔍 Filter Data")
 
-        kolom = st.selectbox(
+        kolom_filter = st.selectbox(
             "Pilih Kolom",
             df.columns
         )
 
-        hasil = (
-            df[kolom]
+        st.divider()
+
+        # =========================
+        # DISTRIBUSI DATA
+        # =========================
+        st.subheader("📈 Distribusi Data")
+
+        distribusi = (
+            df[kolom_filter]
             .astype(str)
             .value_counts()
             .reset_index()
         )
 
-        hasil.columns = [
+        distribusi.columns = [
             "Kategori",
             "Jumlah"
         ]
 
-        st.write("Distribusi Data")
+        col1, col2 = st.columns([2,1])
+
+        with col1:
+            st.bar_chart(
+                distribusi.set_index("Kategori")
+            )
+
+        with col2:
+            st.dataframe(
+                distribusi,
+                use_container_width=True
+            )
+
+        st.divider()
+
+        # =========================
+        # DATA RESPONDEN
+        # =========================
+        st.subheader("📋 Data Responden")
 
         st.dataframe(
-            hasil,
-            use_container_width=True
-        )
-
-        st.bar_chart(
-            hasil.set_index("Kategori")
+            df,
+            use_container_width=True,
+            height=500
         )
 
         st.divider()
 
-        # ==========================
-        # SARAN DAN MASUKAN
-        # ==========================
-        for c in df.columns:
+        # =========================
+        # SARAN & MASUKAN
+        # =========================
+        for col in df.columns:
 
-            nama = str(c).lower()
+            nama = str(col).lower()
 
             if "saran" in nama or "masukan" in nama:
 
                 st.subheader("💡 Saran dan Masukan")
 
-                data_saran = df[c].dropna()
+                data_saran = df[col].dropna()
 
                 for i, isi in enumerate(data_saran, start=1):
-                    st.write(f"{i}. {isi}")
+                    st.write(f"**{i}.** {isi}")
 
     except Exception as e:
-
-        st.error(f"Error membaca file: {e}")
+        st.error(f"Terjadi kesalahan: {e}")
 
 else:
-
     st.info("Silakan upload file CSV terlebih dahulu.")
 
     st.bar_chart(
