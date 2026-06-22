@@ -1,154 +1,114 @@
 import streamlit as st
 import pandas as pd
+import numpy as np
+import plotly.express as px
 
 # =========================
 # CONFIG
 # =========================
 st.set_page_config(
-    page_title="Professional Dashboard KPI",
+    page_title="Dashboard Survei Mahasiswa",
     page_icon="📊",
     layout="wide"
 )
 
-st.title("📊 Survei Kepuasan Mahasiswa terhadap kampus umaha")
+st.title("📊 Dashboard Survei Mahasiswa (Auto Detect + KPI Profesional)")
 
 # =========================
-# UPLOAD FILE
+# LOAD DATA
 # =========================
-uploaded_file = st.file_uploader("Upload CSV file", type=["csv"])
+@st.cache_data
+def load_data(file):
+    df = pd.read_csv(file)
+    
+    # hapus kolom kosong/unnamed
+    df = df.loc[:, ~df.columns.str.contains("^Unnamed")]
+    
+    # rapikan nama kolom
+    df.columns = df.columns.str.strip()
+    
+    return df
 
-if uploaded_file is not None:
-    try:
-        df = pd.read_csv(uploaded_file)
-        df.columns = df.columns.str.strip()
 
-        st.success("Dataset berhasil dimuat!")
+uploaded_file = st.file_uploader("Upload file CSV kamu", type=["csv"])
 
-        # =========================
-        # SIDEBAR FILTER
-        # =========================
-        st.sidebar.header("⚙️ Filter Data")
+if uploaded_file:
+    df = load_data(uploaded_file)
 
-        # filter categorical columns
-        cat_cols = df.select_dtypes(include="object").columns.tolist()
+    st.success("Data berhasil dimuat!")
 
-        filtered_df = df.copy()
+    # =========================
+    # DETEKSI KOLOM OTOMATIS
+    # =========================
+    skor_cols = [col for col in df.columns if "[Skor]" in col]
+    
+    # pastikan numeric
+    for col in skor_cols + ["Total skor"]:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors="coerce")
 
-        for col in cat_cols:
-            unique_vals = df[col].dropna().unique().tolist()
-            if len(unique_vals) > 1 and len(unique_vals) < 50:
-                selected_vals = st.sidebar.multiselect(
-                    f"Filter {col}",
-                    unique_vals,
-                    default=unique_vals
-                )
-                filtered_df = filtered_df[filtered_df[col].isin(selected_vals)]
+    # =========================
+    # KPI SECTION
+    # =========================
+    st.subheader("📌 KPI Utama")
 
-        # =========================
-        # PREVIEW
-        # =========================
-        st.subheader("📄 Data Preview")
-        st.dataframe(filtered_df, use_container_width=True)
+    col1, col2, col3 = st.columns(3)
 
-        # =========================
-        # NUMERIC & KPI
-        # =========================
-        numeric_cols = filtered_df.select_dtypes(include="number").columns.tolist()
+    with col1:
+        avg_total = df["Total skor"].mean() if "Total skor" in df.columns else 0
+        st.metric("Rata-rata Total Skor", f"{avg_total:.2f}")
 
-        st.subheader("📊 KPI Dashboard")
+    with col2:
+        jumlah = len(df)
+        st.metric("Jumlah Responden", jumlah)
 
-        col1, col2, col3, col4 = st.columns(4)
+    with col3:
+        avg_all = df[skor_cols].mean().mean() if skor_cols else 0
+        st.metric("Rata-rata Semua Skor", f"{avg_all:.2f}")
 
-        with col1:
-            st.metric("Total Data", len(filtered_df))
+    # =========================
+    # DISTRIBUSI ANGKATAN
+    # =========================
+    st.subheader("📊 Distribusi Angkatan")
 
-        if len(numeric_cols) > 0:
-            kpi_col = st.selectbox("Pilih kolom KPI", numeric_cols)
+    if "Angkatan " in df.columns:
+        fig = px.histogram(df, x="Angkatan ", color="Angkatan ",
+                           title="Distribusi Responden Berdasarkan Angkatan")
+        st.plotly_chart(fig, use_container_width=True)
 
-            with col2:
-                st.metric("Rata-rata", round(filtered_df[kpi_col].mean(), 2))
+    # =========================
+    # JENIS KELAMIN
+    # =========================
+    st.subheader("👥 Gender Responden")
 
-            with col3:
-                st.metric("Maksimum", filtered_df[kpi_col].max())
+    if "Jenis kelamin" in df.columns:
+        gender = df["Jenis kelamin"].value_counts().reset_index()
+        gender.columns = ["Jenis Kelamin", "Jumlah"]
 
-            with col4:
-                st.metric("Minimum", filtered_df[kpi_col].min())
+        fig = px.pie(gender, names="Jenis Kelamin", values="Jumlah",
+                     title="Distribusi Jenis Kelamin")
+        st.plotly_chart(fig, use_container_width=True)
 
-        else:
-            with col2:
-                st.metric("Rata-rata", "N/A")
-            with col3:
-                st.metric("Max", "N/A")
-            with col4:
-                st.metric("Min", "N/A")
+    # =========================
+    # RATA-RATA PER INDIKATOR
+    # =========================
+    st.subheader("📈 Rata-rata Skor Tiap Indikator")
 
-        # =========================
-        # CHART SECTION
-        # =========================
-        st.subheader("📈 Visual Analytics")
+    if skor_cols:
+        avg_scores = df[skor_cols].mean().sort_values()
+        avg_df = avg_scores.reset_index()
+        avg_df.columns = ["Indikator", "Rata-rata Skor"]
 
-        chart_col = st.selectbox("Pilih kolom untuk visualisasi", filtered_df.columns)
+        fig = px.bar(avg_df, x="Rata-rata Skor", y="Indikator",
+                     orientation="h",
+                     title="Rata-rata Penilaian per Aspek")
+        st.plotly_chart(fig, use_container_width=True)
 
-        chart_type = st.radio(
-            "Jenis Chart",
-            ["Bar", "Line", "Area", "Pie"]
-        )
-
-        colA, colB = st.columns(2)
-
-        with colA:
-            # numeric chart
-            if pd.api.types.is_numeric_dtype(filtered_df[chart_col]):
-                if chart_type == "Bar":
-                    st.bar_chart(filtered_df[chart_col])
-                elif chart_type == "Line":
-                    st.line_chart(filtered_df[chart_col])
-                elif chart_type == "Area":
-                    st.area_chart(filtered_df[chart_col])
-                else:
-                    st.warning("Pie chart cocok untuk data kategori")
-            else:
-                data_counts = filtered_df[chart_col].value_counts()
-
-                if chart_type == "Pie":
-                    st.write(data_counts)
-                    st.info("Pie chart simulated via bar (Streamlit limitation)")
-                    st.bar_chart(data_counts)
-                else:
-                    st.bar_chart(data_counts)
-
-        with colB:
-            st.write("📌 Insight Otomatis")
-
-            if len(numeric_cols) > 0:
-                top_col = numeric_cols[0]
-
-                avg = filtered_df[top_col].mean()
-                mx = filtered_df[top_col].max()
-                mn = filtered_df[top_col].min()
-
-                st.info(f"""
-                - Rata-rata **{top_col}**: {round(avg,2)}
-                - Nilai tertinggi: {mx}
-                - Nilai terendah: {mn}
-                - Total data setelah filter: {len(filtered_df)}
-                """)
-            else:
-                st.warning("Tidak ada data numerik untuk insight")
-
-        # =========================
-        # DETAIL STATISTICS
-        # =========================
-        st.subheader("📌 Statistik Lengkap")
-
-        if len(numeric_cols) > 0:
-            st.dataframe(filtered_df[numeric_cols].describe(), use_container_width=True)
-        else:
-            st.info("Tidak ada kolom numerik")
-
-    except Exception as e:
-        st.error("Terjadi error pada sistem")
-        st.exception(e)
+    # =========================
+    # RAW DATA
+    # =========================
+    st.subheader("📄 Data Mentah")
+    st.dataframe(df)
 
 else:
-    st.info("Silakan upload file CSV untuk mulai analisis")
+    st.info("Silakan upload file CSV untuk menampilkan dashboard.")
