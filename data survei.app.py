@@ -86,29 +86,21 @@ st.dataframe(filtered_data, use_container_width=True)
 # STATISTIK
 # =========================
 st.subheader("📊 Statistik")
+# bersihkan nama kolom (ini penting banget)
+chart_data.columns = chart_data.columns.str.strip()
 
-import pandas as pd
+# cari kolom nilai secara fleksibel
+kolom_nilai = None
 
-filtered_data.columns = filtered_data.columns.str.strip()
+for col in chart_data.columns:
+    if col.lower() == "nilai":
+        kolom_nilai = col
+        break
 
-# ubah "Total skor" jadi numeric (penting!)
-if "Total skor" in filtered_data.columns:
-    filtered_data["Total skor"] = pd.to_numeric(filtered_data["Total skor"], errors="coerce")
-
-col1, col2, col3 = st.columns(3)
-
-col1.metric("Jumlah Data", len(filtered_data))
-
-# RATA-RATA YANG BENAR SESUAI DATA KAMU
-if "Total skor" in filtered_data.columns:
-    col2.metric(
-        "Rata-rata Skor",
-        round(filtered_data["Total skor"].mean(), 2)
-    )
+if kolom_nilai:
+    st.bar_chart(chart_data[kolom_nilai])
 else:
-    col2.metric("Rata-rata Skor", "Kolom tidak ditemukan")
-
-col3.metric("Jumlah Kolom", len(filtered_data.columns))
+    st.error(f"Kolom 'Nilai' tidak ditemukan. Kolom yang tersedia: {list(chart_data.columns)}")
 
 # =========================
 # BAR CHART
