@@ -50,10 +50,10 @@ menu = st.sidebar.radio(
 )
 
 # ================= DATA DUMMY =================
-responden = 41
+responden = 150
 kepuasan = 92.4
 rata_skor = 4.62
-saran = 41
+saran = 87
 
 # ================= HOME =================
 if menu == "🏠 Home":
@@ -131,8 +131,7 @@ elif menu == "📊 Data Survey":
             "Teknik Industri",
             "Informatika",
             "Manajemen",
-            "Teknik Mesin",
-            "Hukum"
+            "Akuntansi"
         ],
         "Skor":[4.6,4.7,4.5,4.4]
     })
