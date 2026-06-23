@@ -41,7 +41,7 @@ section[data-testid="stSidebar"]{
 # ==========================
 @st.cache_data
 def load_data():
-    return pd.read_csv("tugas pak gusti(1).csv")
+    return pd.read_csv("tugas pak gusti.csv")
 
 try:
     df = load_data()
