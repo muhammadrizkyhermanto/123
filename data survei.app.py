@@ -1,151 +1,174 @@
 import streamlit as st
 import pandas as pd
+import numpy as np
 
-# ==========================
-# KONFIGURASI HALAMAN
-# ==========================
 st.set_page_config(
     page_title="Survey Kepuasan Mahasiswa UMAHA",
-    page_icon="🎓",
     layout="wide"
 )
 
-# ==========================
-# DATA CONTOH
-# ==========================
-df = pd.DataFrame({
-    "Program Studi": [
-        "Teknik Industri",
-        "Informatika",
-        "Manajemen",
-        "Akuntansi",
-        "Keperawatan"
-    ],
-    "Jumlah Responden": [120, 150, 100, 90, 80],
-    "Skor Kepuasan": [4.5, 4.3, 4.4, 4.2, 4.6]
-})
-
-# ==========================
-# CSS
-# ==========================
+# ================= CSS =================
 st.markdown("""
 <style>
+
 .main-title{
-    text-align:center;
-    font-size:42px;
+    color:#1f4268;
+    font-size:40px;
     font-weight:bold;
-    color:#0A4D68;
 }
 
-.subtitle{
+.card{
+    background:#245785;
+    padding:20px;
+    border-radius:12px;
     text-align:center;
-    color:#555;
-    font-size:18px;
-    margin-bottom:20px;
+    color:white;
 }
+
+.sidebar-title{
+    font-size:28px;
+    font-weight:bold;
+}
+
 </style>
 """, unsafe_allow_html=True)
 
-# ==========================
-# SIDEBAR
-# ==========================
-st.sidebar.title("📋 Menu")
-menu = st.sidebar.radio(
-    "Pilih Halaman",
-    ["Dashboard", "Data Survey", "Analisis"]
+# ================= SIDEBAR =================
+st.sidebar.markdown(
+    "<div class='sidebar-title'>📋 Menu Navigasi</div>",
+    unsafe_allow_html=True
 )
 
-# ==========================
-# DASHBOARD
-# ==========================
-if menu == "Dashboard":
+menu = st.sidebar.radio(
+    "Pilih Halaman",
+    [
+        "🏠 Home",
+        "📊 Data Survey",
+        "📈 Analisis",
+        "⚠️ FMEA"
+    ]
+)
+
+# ================= DATA DUMMY =================
+responden = 520
+kepuasan = 92.4
+rata_skor = 4.62
+saran = 87
+
+# ================= HOME =================
+if menu == "🏠 Home":
 
     st.markdown(
-        '<div class="main-title">🎓 Survey Kepuasan Mahasiswa UMAHA</div>',
+        "<div class='main-title'>🏫 Dashboard Survey Kepuasan Mahasiswa UMAHA</div>",
         unsafe_allow_html=True
-    )
-
-    st.markdown(
-        '<div class="subtitle">Universitas Maarif Hasyim Latif</div>',
-        unsafe_allow_html=True
-    )
-
-    total_responden = df["Jumlah Responden"].sum()
-    rata_kepuasan = round(df["Skor Kepuasan"].mean(), 2)
-    skor_tertinggi = df["Skor Kepuasan"].max()
-
-    col1, col2, col3 = st.columns(3)
-
-    col1.metric(
-        "Total Responden",
-        total_responden
-    )
-
-    col2.metric(
-        "Rata-rata Kepuasan",
-        rata_kepuasan
-    )
-
-    col3.metric(
-        "Skor Tertinggi",
-        skor_tertinggi
     )
 
     st.markdown("---")
 
-    st.subheader("📈 Skor Kepuasan per Program Studi")
-    st.bar_chart(
-        df.set_index("Program Studi")["Skor Kepuasan"]
-    )
+    c1,c2,c3,c4 = st.columns(4)
 
-    st.subheader("👥 Jumlah Responden")
+    with c1:
+        st.markdown(f"""
+        <div class='card'>
+        <h1>{responden}</h1>
+        Total Responden
+        </div>
+        """, unsafe_allow_html=True)
+
+    with c2:
+        st.markdown(f"""
+        <div class='card'>
+        <h1>{kepuasan}%</h1>
+        Tingkat Kepuasan
+        </div>
+        """, unsafe_allow_html=True)
+
+    with c3:
+        st.markdown(f"""
+        <div class='card'>
+        <h1>{rata_skor}</h1>
+        Rata-rata Skor
+        </div>
+        """, unsafe_allow_html=True)
+
+    with c4:
+        st.markdown(f"""
+        <div class='card'>
+        <h1>{saran}</h1>
+        Jumlah Saran
+        </div>
+        """, unsafe_allow_html=True)
+
+    st.write("")
+    st.write("")
+
+    st.subheader("📈 Tren Kepuasan Mahasiswa")
+
+    chart_data = pd.DataFrame({
+        "Bulan":[
+            "Jan","Feb","Mar","Apr",
+            "Mei","Jun","Jul","Agu",
+            "Sep","Okt","Nov","Des"
+        ],
+        "Skor":[
+            4.1,4.2,4.3,4.4,
+            4.5,4.5,4.6,4.7,
+            4.6,4.7,4.8,4.8
+        ]
+    })
+
     st.line_chart(
-        df.set_index("Program Studi")["Jumlah Responden"]
+        chart_data.set_index("Bulan")
     )
 
-# ==========================
-# DATA SURVEY
-# ==========================
-elif menu == "Data Survey":
+# ================= DATA =================
+elif menu == "📊 Data Survey":
 
-    st.header("📊 Data Survey")
+    st.subheader("Data Survey")
 
-    st.dataframe(
-        df,
-        use_container_width=True
+    df = pd.DataFrame({
+        "Program Studi":[
+            "Teknik Industri",
+            "Informatika",
+            "Manajemen",
+            "Akuntansi"
+        ],
+        "Skor":[4.6,4.7,4.5,4.4]
+    })
+
+    st.dataframe(df, use_container_width=True)
+
+# ================= ANALISIS =================
+elif menu == "📈 Analisis":
+
+    st.subheader("Analisis Kepuasan")
+
+    data = pd.DataFrame({
+        "Aspek":[
+            "Pelayanan",
+            "Fasilitas",
+            "Akademik",
+            "Administrasi"
+        ],
+        "Nilai":[92,88,95,90]
+    })
+
+    st.bar_chart(
+        data.set_index("Aspek")
     )
 
-# ==========================
-# ANALISIS
-# ==========================
-elif menu == "Analisis":
+# ================= FMEA =================
+elif menu == "⚠️ FMEA":
 
-    st.header("📋 Analisis Kepuasan")
+    st.subheader("Analisis Risiko")
 
-    prodi_terbaik = df.loc[
-        df["Skor Kepuasan"].idxmax(),
-        "Program Studi"
-    ]
+    severity = st.slider("Severity",1,10,5)
+    occurrence = st.slider("Occurrence",1,10,5)
+    detection = st.slider("Detection",1,10,5)
 
-    prodi_terendah = df.loc[
-        df["Skor Kepuasan"].idxmin(),
-        "Program Studi"
-    ]
+    rpn = severity*occurrence*detection
 
-    st.success(
-        f"Program Studi dengan kepuasan tertinggi: {prodi_terbaik}"
-    )
-
-    st.warning(
-        f"Program Studi dengan kepuasan terendah: {prodi_terendah}"
-    )
-
-    st.subheader("Rata-rata Kepuasan")
-
-    st.progress(
-        int(df["Skor Kepuasan"].mean() * 20)
-    )
-
-    st.write(
-        f"Nilai rata-rata kepuasan mahasiswa adalah **{round(df['Skor Kepuasan'].mean(),2)} dari 5.0**"
+    st.metric(
+        "Risk Priority Number",
+        rpn
     )
