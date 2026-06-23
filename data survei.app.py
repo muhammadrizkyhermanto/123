@@ -2,13 +2,28 @@ import streamlit as st
 import pandas as pd
 
 # ==========================
-# PAGE CONFIG
+# KONFIGURASI HALAMAN
 # ==========================
 st.set_page_config(
-    page_title="Dashboard Kepuasan Mahasiswa",
+    page_title="Survey Kepuasan Mahasiswa UMAHA",
     page_icon="🎓",
     layout="wide"
 )
+
+# ==========================
+# DATA CONTOH
+# ==========================
+df = pd.DataFrame({
+    "Program Studi": [
+        "Teknik Industri",
+        "Informatika",
+        "Manajemen",
+        "Akuntansi",
+        "Keperawatan"
+    ],
+    "Jumlah Responden": [120, 150, 100, 90, 80],
+    "Skor Kepuasan": [4.5, 4.3, 4.4, 4.2, 4.6]
+})
 
 # ==========================
 # CSS
@@ -17,67 +32,28 @@ st.markdown("""
 <style>
 .main-title{
     text-align:center;
-    font-size:40px;
+    font-size:42px;
     font-weight:bold;
-    color:#12355B;
+    color:#0A4D68;
 }
 
-.card{
-    background:#12355B;
-    color:white;
-    padding:20px;
-    border-radius:15px;
+.subtitle{
     text-align:center;
-}
-
-section[data-testid="stSidebar"]{
-    background-color:#F5F7FA;
+    color:#555;
+    font-size:18px;
+    margin-bottom:20px;
 }
 </style>
 """, unsafe_allow_html=True)
 
 # ==========================
-# LOAD DATA
-# ==========================
-@st.cache_data
-def load_data():
-    return pd.read_csv("tugas pak gusti.csv")
-
-try:
-    df = load_data()
-except Exception as e:
-    st.error(f"Gagal membaca file CSV: {e}")
-    st.stop()
-
-# ==========================
-# DETEKSI KOLOM SKOR
-# ==========================
-score_cols = [c for c in df.columns if "[Skor]" in c]
-
-# ==========================
 # SIDEBAR
 # ==========================
-st.sidebar.title("📋 Navigasi")
-
+st.sidebar.title("📋 Menu")
 menu = st.sidebar.radio(
     "Pilih Halaman",
-    [
-        "Dashboard",
-        "Data",
-        "Analisis",
-        "Masukan"
-    ]
+    ["Dashboard", "Data Survey", "Analisis"]
 )
-
-# ==========================
-# KPI
-# ==========================
-if len(score_cols) > 0:
-    rata = round(df[score_cols].mean().mean(), 2)
-    tertinggi = int(df[score_cols].max().max())
-else:
-    rata = 0
-    tertinggi = 0
 
 # ==========================
 # DASHBOARD
@@ -85,47 +61,54 @@ else:
 if menu == "Dashboard":
 
     st.markdown(
-        '<div class="main-title">🎓 Dashboard Kepuasan Mahasiswa</div>',
+        '<div class="main-title">🎓 Survey Kepuasan Mahasiswa UMAHA</div>',
         unsafe_allow_html=True
     )
 
-    c1,c2,c3 = st.columns(3)
-
-    c1.metric(
-        "Jumlah Responden",
-        len(df)
+    st.markdown(
+        '<div class="subtitle">Universitas Maarif Hasyim Latif</div>',
+        unsafe_allow_html=True
     )
 
-    c2.metric(
-        "Rata-rata Skor",
-        rata
+    total_responden = df["Jumlah Responden"].sum()
+    rata_kepuasan = round(df["Skor Kepuasan"].mean(), 2)
+    skor_tertinggi = df["Skor Kepuasan"].max()
+
+    col1, col2, col3 = st.columns(3)
+
+    col1.metric(
+        "Total Responden",
+        total_responden
     )
 
-    c3.metric(
+    col2.metric(
+        "Rata-rata Kepuasan",
+        rata_kepuasan
+    )
+
+    col3.metric(
         "Skor Tertinggi",
-        tertinggi
+        skor_tertinggi
     )
 
     st.markdown("---")
 
-    if len(score_cols) > 0:
+    st.subheader("📈 Skor Kepuasan per Program Studi")
+    st.bar_chart(
+        df.set_index("Program Studi")["Skor Kepuasan"]
+    )
 
-        st.subheader("Rata-rata Tiap Indikator")
-
-        rata_indikator = (
-            df[score_cols]
-            .mean()
-            .sort_values(ascending=False)
-        )
-
-        st.bar_chart(rata_indikator)
+    st.subheader("👥 Jumlah Responden")
+    st.line_chart(
+        df.set_index("Program Studi")["Jumlah Responden"]
+    )
 
 # ==========================
-# DATA
+# DATA SURVEY
 # ==========================
-elif menu == "Data":
+elif menu == "Data Survey":
 
-    st.subheader("Data Responden")
+    st.header("📊 Data Survey")
 
     st.dataframe(
         df,
@@ -137,56 +120,32 @@ elif menu == "Data":
 # ==========================
 elif menu == "Analisis":
 
-    st.subheader("Analisis Indikator")
+    st.header("📋 Analisis Kepuasan")
 
-    if len(score_cols) == 0:
-        st.warning("Kolom [Skor] tidak ditemukan")
-    else:
-
-        indikator = st.selectbox(
-            "Pilih Indikator",
-            score_cols
-        )
-
-        distribusi = (
-            df[indikator]
-            .value_counts()
-            .sort_index()
-        )
-
-        st.bar_chart(distribusi)
-
-        st.metric(
-            "Rata-rata",
-            round(df[indikator].mean(),2)
-        )
-
-# ==========================
-# MASUKAN
-# ==========================
-elif menu == "Masukan":
-
-    st.subheader("Masukan Mahasiswa")
-
-    masukan_cols = [
-        c for c in df.columns
-        if "[Masukan]" in c
+    prodi_terbaik = df.loc[
+        df["Skor Kepuasan"].idxmax(),
+        "Program Studi"
     ]
 
-    if len(masukan_cols) == 0:
-        st.info("Tidak ditemukan kolom masukan")
-    else:
+    prodi_terendah = df.loc[
+        df["Skor Kepuasan"].idxmin(),
+        "Program Studi"
+    ]
 
-        for col in masukan_cols:
+    st.success(
+        f"Program Studi dengan kepuasan tertinggi: {prodi_terbaik}"
+    )
 
-            st.markdown(f"### {col}")
+    st.warning(
+        f"Program Studi dengan kepuasan terendah: {prodi_terendah}"
+    )
 
-            isi = (
-                df[col]
-                .dropna()
-                .astype(str)
-            )
+    st.subheader("Rata-rata Kepuasan")
 
-            for item in isi:
-                if item.strip():
-                    st.info(item)
+    st.progress(
+        int(df["Skor Kepuasan"].mean() * 20)
+    )
+
+    st.write(
+        f"Nilai rata-rata kepuasan mahasiswa adalah **{round(df['Skor Kepuasan'].mean(),2)} dari 5.0**"
+    )
