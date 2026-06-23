@@ -1,259 +1,172 @@
 import streamlit as st
 import pandas as pd
-import plotly.express as px
-import plotly.graph_objects as go
 
-# =========================
-# KONFIGURASI HALAMAN
-# =========================
+# ==========================
+# PAGE CONFIG
+# ==========================
 st.set_page_config(
-    page_title="Dashboard Analisis Kepuasan",
-    page_icon="📊",
-    layout="wide",
-    initial_sidebar_state="expanded"
+    page_title="Dashboard Kepuasan Mahasiswa",
+    page_icon="🎓",
+    layout="wide"
 )
 
-# =========================
-# CUSTOM CSS
-# =========================
+# ==========================
+# CSS
+# ==========================
 st.markdown("""
 <style>
-
 .main-title{
-    font-size:38px;
-    font-weight:bold;
-    color:#173F5F;
     text-align:center;
+    font-size:40px;
+    font-weight:bold;
+    color:#12355B;
 }
 
-.metric-box{
-    background:#1f4e79;
+.card{
+    background:#12355B;
+    color:white;
     padding:20px;
     border-radius:15px;
-    color:white;
     text-align:center;
 }
 
 section[data-testid="stSidebar"]{
-    background-color:#f5f7fa;
+    background-color:#F5F7FA;
 }
-
 </style>
 """, unsafe_allow_html=True)
 
-# =========================
+# ==========================
 # LOAD DATA
-# =========================
+# ==========================
 @st.cache_data
 def load_data():
-    return pd.read_csv("tugas pak gusti.csv")
+    return pd.read_csv("tugas pak gusti(1).csv")
 
-df = load_data()
+try:
+    df = load_data()
+except Exception as e:
+    st.error(f"Gagal membaca file CSV: {e}")
+    st.stop()
 
-# =========================
+# ==========================
 # DETEKSI KOLOM SKOR
-# =========================
-score_cols = [col for col in df.columns if "[Skor]" in col]
+# ==========================
+score_cols = [c for c in df.columns if "[Skor]" in c]
 
-# =========================
+# ==========================
 # SIDEBAR
-# =========================
-st.sidebar.title("📋 Menu Navigasi")
+# ==========================
+st.sidebar.title("📋 Navigasi")
 
 menu = st.sidebar.radio(
     "Pilih Halaman",
     [
-        "🏠 Dashboard",
-        "📊 Data Responden",
-        "📈 Analisis Indikator",
-        "💬 Masukan Mahasiswa"
+        "Dashboard",
+        "Data",
+        "Analisis",
+        "Masukan"
     ]
 )
 
-# =========================
-# FILTER ANGKATAN
-# =========================
-angkatan_col = None
-
-for col in df.columns:
-    if "Angkatan" in col:
-        angkatan_col = col
-        break
-
-if angkatan_col:
-
-    daftar_angkatan = ["Semua"] + sorted(
-        df[angkatan_col].dropna().astype(str).unique().tolist()
-    )
-
-    pilih_angkatan = st.sidebar.selectbox(
-        "Filter Angkatan",
-        daftar_angkatan
-    )
-
-    if pilih_angkatan != "Semua":
-        df = df[df[angkatan_col].astype(str) == pilih_angkatan]
-
-# =========================
+# ==========================
 # KPI
-# =========================
-total_responden = len(df)
+# ==========================
+if len(score_cols) > 0:
+    rata = round(df[score_cols].mean().mean(), 2)
+    tertinggi = int(df[score_cols].max().max())
+else:
+    rata = 0
+    tertinggi = 0
 
-rata_skor = round(
-    df[score_cols].mean().mean(),
-    2
-)
-
-skor_tertinggi = int(
-    df[score_cols].max().max()
-)
-
-indeks_kepuasan = round(
-    (rata_skor / 5) * 100,
-    1
-)
-
-# =========================
+# ==========================
 # DASHBOARD
-# =========================
-if menu == "🏠 Dashboard":
+# ==========================
+if menu == "Dashboard":
 
     st.markdown(
         '<div class="main-title">🎓 Dashboard Kepuasan Mahasiswa</div>',
         unsafe_allow_html=True
     )
 
-    st.write("")
+    c1,c2,c3 = st.columns(3)
 
-    col1, col2, col3, col4 = st.columns(4)
-
-    col1.metric(
+    c1.metric(
         "Jumlah Responden",
-        total_responden
+        len(df)
     )
 
-    col2.metric(
+    c2.metric(
         "Rata-rata Skor",
-        rata_skor
+        rata
     )
 
-    col3.metric(
-        "Indeks Kepuasan (%)",
-        indeks_kepuasan
-    )
-
-    col4.metric(
+    c3.metric(
         "Skor Tertinggi",
-        skor_tertinggi
+        tertinggi
     )
 
     st.markdown("---")
 
-    # =========================
-    # RATA-RATA PER INDIKATOR
-    # =========================
-    rata_indikator = (
-        df[score_cols]
-        .mean()
-        .sort_values(ascending=False)
-    )
+    if len(score_cols) > 0:
 
-    fig_bar = px.bar(
-        x=rata_indikator.values,
-        y=[
-            i.replace("[Skor]", "")
-            for i in rata_indikator.index
-        ],
-        orientation="h",
-        title="Rata-rata Kepuasan per Indikator"
-    )
+        st.subheader("Rata-rata Tiap Indikator")
 
-    st.plotly_chart(
-        fig_bar,
-        use_container_width=True
-    )
+        rata_indikator = (
+            df[score_cols]
+            .mean()
+            .sort_values(ascending=False)
+        )
 
-    # =========================
-    # PIE CHART
-    # =========================
-    fig_pie = go.Figure(
-        data=[
-            go.Pie(
-                labels=[
-                    i.replace("[Skor]", "")
-                    for i in rata_indikator.index
-                ],
-                values=rata_indikator.values,
-                hole=0.45
-            )
-        ]
-    )
+        st.bar_chart(rata_indikator)
 
-    fig_pie.update_layout(
-        title="Distribusi Kepuasan"
-    )
+# ==========================
+# DATA
+# ==========================
+elif menu == "Data":
 
-    st.plotly_chart(
-        fig_pie,
-        use_container_width=True
-    )
-
-# =========================
-# DATA RESPONDEN
-# =========================
-elif menu == "📊 Data Responden":
-
-    st.subheader("📊 Data Responden")
+    st.subheader("Data Responden")
 
     st.dataframe(
         df,
         use_container_width=True
     )
 
-# =========================
-# ANALISIS INDIKATOR
-# =========================
-elif menu == "📈 Analisis Indikator":
+# ==========================
+# ANALISIS
+# ==========================
+elif menu == "Analisis":
 
-    st.subheader("📈 Analisis Detail Indikator")
+    st.subheader("Analisis Indikator")
 
-    indikator = st.selectbox(
-        "Pilih Indikator",
-        score_cols
-    )
+    if len(score_cols) == 0:
+        st.warning("Kolom [Skor] tidak ditemukan")
+    else:
 
-    distribusi = (
-        df[indikator]
-        .value_counts()
-        .sort_index()
-    )
+        indikator = st.selectbox(
+            "Pilih Indikator",
+            score_cols
+        )
 
-    fig = px.bar(
-        x=distribusi.index.astype(str),
-        y=distribusi.values,
-        labels={
-            "x": "Skor",
-            "y": "Jumlah"
-        },
-        title=indikator
-    )
+        distribusi = (
+            df[indikator]
+            .value_counts()
+            .sort_index()
+        )
 
-    st.plotly_chart(
-        fig,
-        use_container_width=True
-    )
+        st.bar_chart(distribusi)
 
-    st.metric(
-        "Rata-rata Indikator",
-        round(df[indikator].mean(), 2)
-    )
+        st.metric(
+            "Rata-rata",
+            round(df[indikator].mean(),2)
+        )
 
-# =========================
-# MASUKAN MAHASISWA
-# =========================
-elif menu == "💬 Masukan Mahasiswa":
+# ==========================
+# MASUKAN
+# ==========================
+elif menu == "Masukan":
 
-    st.subheader("💬 Masukan dan Saran Mahasiswa")
+    st.subheader("Masukan Mahasiswa")
 
     masukan_cols = [
         c for c in df.columns
@@ -261,29 +174,19 @@ elif menu == "💬 Masukan Mahasiswa":
     ]
 
     if len(masukan_cols) == 0:
-
-        st.warning(
-            "Tidak ditemukan kolom [Masukan] pada data."
-        )
-
+        st.info("Tidak ditemukan kolom masukan")
     else:
 
         for col in masukan_cols:
 
-            st.markdown(
-                f"### {col.replace('[Masukan]', '')}"
-            )
+            st.markdown(f"### {col}")
 
-            data_masukan = (
+            isi = (
                 df[col]
                 .dropna()
                 .astype(str)
             )
 
-            data_masukan = data_masukan[
-                data_masukan.str.strip() != ""
-            ]
-
-            for teks in data_masukan:
-
-                st.info(teks)
+            for item in isi:
+                if item.strip():
+                    st.info(item)
